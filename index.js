@@ -52,21 +52,52 @@ app.post('/api/todos', async (req, res) => {
   }
 });
 
-// Mark todo as completed
+// Update todo (completed status and/or text)
 app.put('/api/todos/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { completed } = req.body;
+    const { completed, text } = req.body;
     
     if (!id || isNaN(parseInt(id))) {
       return res.status(400).json({ error: 'Invalid todo ID' });
     }
     
-    if (typeof completed !== 'boolean') {
+    // Validate completed field if provided
+    if (completed !== undefined && typeof completed !== 'boolean') {
       return res.status(400).json({ error: 'Completed must be a boolean' });
     }
     
-    const result = await pool.query('UPDATE todos SET completed = $1 WHERE id = $2 RETURNING *', [completed, id]);
+    // Validate text field if provided
+    if (text !== undefined && (!text || !text.trim())) {
+      return res.status(400).json({ error: 'Todo text cannot be empty' });
+    }
+    
+    // Build dynamic query based on provided fields
+    const updates = [];
+    const values = [];
+    let valueIndex = 1;
+    
+    if (completed !== undefined) {
+      updates.push(`completed = $${valueIndex}`);
+      values.push(completed);
+      valueIndex++;
+    }
+    
+    if (text !== undefined) {
+      updates.push(`text = $${valueIndex}`);
+      values.push(text.trim());
+      valueIndex++;
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+    
+    // Add the id parameter
+    values.push(id);
+    
+    const query = `UPDATE todos SET ${updates.join(', ')} WHERE id = $${valueIndex} RETURNING *`;
+    const result = await pool.query(query, values);
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Todo not found' });
