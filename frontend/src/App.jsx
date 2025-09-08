@@ -53,7 +53,7 @@ function App() {
       const res = await fetch(`/api/todos/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ completed: !completed })
+        body: JSON.stringify({ completed: !Boolean(completed) })
       });
       
       if (!res.ok) {

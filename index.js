@@ -56,15 +56,27 @@ app.post('/api/todos', async (req, res) => {
 app.put('/api/todos/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { completed, text } = req.body;
+    let { completed, text } = req.body;
+    console.log(completed, text);
     
     if (!id || isNaN(parseInt(id))) {
       return res.status(400).json({ error: 'Invalid todo ID' });
     }
     
     // Validate completed field if provided
-    if (completed !== undefined && typeof completed !== 'boolean') {
-      return res.status(400).json({ error: 'Completed must be a boolean' });
+    if (completed !== undefined) {
+      // Accept boolean, 0/1, or "true"/"false" strings
+      if (typeof completed === 'boolean') {
+        // ok
+      } else if (completed === 0 || completed === 1) {
+        completed = Boolean(completed);
+      } else if (typeof completed === 'string') {
+        if (completed === 'true') completed = true;
+        else if (completed === 'false') completed = false;
+        else return res.status(400).json({ error: 'Completed must be a boolean, 0/1, or "true"/"false" string' });
+      } else {
+        return res.status(400).json({ error: 'Completed must be a boolean, 0/1, or "true"/"false" string' });
+      }
     }
     
     // Validate text field if provided
