@@ -4,6 +4,8 @@ import './App.css';
 function App() {
   const [todos, setTodos] = useState([]);
   const [newTodo, setNewTodo] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
 
   useEffect(() => {
     const fetchTodos = async () => {
@@ -87,6 +89,43 @@ function App() {
     }
   };
 
+  const startEdit = (id, text) => {
+    setEditingId(id);
+    setEditText(text);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const saveEdit = async (id) => {
+    if (!editText.trim()) {
+      alert('Todo text cannot be empty');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/todos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: editText.trim() })
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Failed to update todo: ${res.status}`);
+      }
+      
+      const updated = await res.json();
+      setTodos(todos.map(t => t.id === id ? updated : t));
+      setEditingId(null);
+      setEditText('');
+    } catch (error) {
+      console.error('Error updating todo:', error);
+      alert('Failed to update todo. Please try again.');
+    }
+  };
+
   return (
     <div style={{ maxWidth: 400, margin: 'auto' }}>
       <h1>Todo App</h1>
@@ -98,30 +137,92 @@ function App() {
       <button onClick={addTodo} disabled={!newTodo.trim()}>Add</button>
       <ul>
         {todos.map(todo => (
-          <li key={todo.id}>
-            <span
-              style={{ textDecoration: todo.completed ? 'line-through' : 'none', cursor: 'pointer' }}
-              onClick={() => toggleTodo(todo.id, todo.completed)}
-            >
-              {todo.text}
-            </span>
-            <button 
-              onClick={() => deleteTodo(todo.id, todo.text)} 
-              style={{ 
-                marginLeft: 8, 
-                padding: '4px 8px',
-                backgroundColor: '#dc3545',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px'
-              }}
-              title={`Delete "${todo.text}"`}
-              aria-label={`Delete todo: ${todo.text}`}
-            >
-              Delete
-            </button>
+          <li key={todo.id} style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {editingId === todo.id ? (
+              <>
+                <input
+                  value={editText}
+                  onChange={e => setEditText(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && saveEdit(todo.id)}
+                  style={{ flex: 1, padding: '4px' }}
+                  autoFocus
+                />
+                <button 
+                  onClick={() => saveEdit(todo.id)}
+                  style={{ 
+                    padding: '4px 8px',
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  Save
+                </button>
+                <button 
+                  onClick={cancelEdit}
+                  style={{ 
+                    padding: '4px 8px',
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <span
+                  style={{ 
+                    textDecoration: todo.completed ? 'line-through' : 'none', 
+                    cursor: 'pointer',
+                    flex: 1,
+                    textAlign: 'left'
+                  }}
+                  onClick={() => toggleTodo(todo.id, todo.completed)}
+                >
+                  {todo.text}
+                </span>
+                <button 
+                  onClick={() => startEdit(todo.id, todo.text)}
+                  style={{ 
+                    padding: '4px 8px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                  title={`Edit "${todo.text}"`}
+                  aria-label={`Edit todo: ${todo.text}`}
+                >
+                  Edit
+                </button>
+                <button 
+                  onClick={() => deleteTodo(todo.id, todo.text)} 
+                  style={{ 
+                    padding: '4px 8px',
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                  title={`Delete "${todo.text}"`}
+                  aria-label={`Delete todo: ${todo.text}`}
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </li>
         ))}
       </ul>
